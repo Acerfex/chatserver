@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>[P2P CHATSERVER]</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #222;
+      color: #eee;
+      margin: 0; padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    #container {
+      max-width: 600px;
+      width: 100%;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      user-select: none;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 6px 0;
+      user-select: none;
+    }
+
+    input[type=text], input[type=file] {
+      width: 100%;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      box-sizing: border-box;
+      background: #333;
+      color: #eee;
+    }
+
+    input[type=text]:focus {
+      outline: 2px solid #4A90E2;
+      background: #2b2b2b;
+    }
+
+    button {
+      background-color: #4A90E2;
+      border: none;
+      padding: 10px 16px;
+      margin: 12px 4px 4px 0;
+      color: white;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      user-select: none;
+    }
+
+    button:hover {
+      background-color: #357ABD;
+    }
+
+    #disconnectBtn {
+      background-color: #E74C3C;
+      color: white;
+      margin-top: 12px;
+      width: 100%;
+    }
+
+    #disconnectBtn:hover {
+      background-color: #C0392B;
+    }
+
+    #status {
+      font-size: 0.9em;
+      color: #aaa;
+      margin-bottom: 15px;
+      user-select: none;
+    }
+
+    #chat {
+      background: #1e1e1e;
+      height: 300px;
+      overflow-y: auto;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 0.95em;
+      user-select: text;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #chat p.message {
+      padding: 8px 12px;
+      border-radius: 12px;
+      max-width: 75%;
+      word-wrap: break-word;
+      margin: 0;
+      display: inline-block;
+    }
+
+    #chat p.message.me {
+      background-color: #dcf8c6; /* WhatsApp Grün */
+      color: #000;
+      align-self: flex-end;
+      margin-left: auto;
+      border-bottom-right-radius: 0;
+    }
+
+    #chat p.message.them {
+      background-color: #fff; /* Weiß für andere Person */
+      color: #000;
+      align-self: flex-start;
+      margin-right: auto;
+      border-bottom-left-radius: 0;
+    }
+
+    #chat p.system {
+      color: #999;
+      font-style: italic;
+      text-align: center;
+    }
+
+    #inputArea {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #messageInput {
+      flex-grow: 1;
+      padding: 10px;
+      border-radius: 4px;
+      border: none;
+      background: #333;
+      color: #eee;
+    }
+
+    #messageInput:focus {
+      outline: 2px solid #4A90E2;
+      background: #2b2b2b;
+    }
+
+    #fileInput {
+      flex-grow: 0;
+      padding: 0;
+      cursor: pointer;
+      color: #ccc;
+    }
+
+    #hostIdContainer {
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+      gap: 8px;
+    }
+
+    #hostId {
+      background: #333;
+      color: #4A90E2;
+      font-weight: bold;
+      padding: 6px 10px;
+      border-radius: 4px;
+      user-select: all;
+      cursor: pointer;
+      flex-grow: 1;
+      overflow-x: auto;
+    }
+
+    #copyBtn {
+      background: #4A90E2;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      color: white;
+      font-weight: 600;
+      transition: background-color 0.3s ease;
+      user-select: none;
+    }
+
+    #copyBtn:hover {
+      background-color: #357ABD;
+    }
+
+    @media (max-width: 480px) {
+      button {
+        width: 100%;
+        margin: 8px 0 0 0;
+      }
+
+      #inputArea {
+        flex-direction: column;
+      }
+
+      #hostIdContainer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      #copyBtn {
+        width: 100%;
+      }
+    }
+  </style>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <div id="container">
+    <h2>[P2P Chatserver]</h2>
+
+    <label for="nameInput">Name:</label>
+    <input type="text" id="nameInput" placeholder="Dein Name" />
+
+    <label for="customIdInput">Eigene Host-ID:</label>
+    <input type="text" id="customIdInput" placeholder="z. B. mein-chat-id" />
+
+    <button id="startBtn">Als Host starten</button>
+
+    <div id="hostIdContainer" style="display:none;">
+      <label for="hostId" style="margin:0;">Deine Host-ID:</label>
+      <div id="hostId"></div>
+      <button id="copyBtn">Kopieren</button>
+    </div>
+
+    <label for="hostIdInput" style="margin-top: 20px;">Mit Host verbinden:</label>
+    <input type="text" id="hostIdInput" placeholder="Host-ID eingeben" />
+    <button id="connectBtn">Verbinden</button>
+
+    <div id="status">Status: Nicht verbunden</div>
+    <div id="chat"></div>
+
+    <div id="inputArea">
+      <input type="text" id="messageInput" placeholder="Nachricht..." />
+      <input type="file" id="fileInput" />
+      <button id="sendBtn">Senden</button>
+    </div>
+
+    <button id="disconnectBtn">Verbindung trennen</button>
+  </div>
+
+  <script>
+    let peer = null;
+    let conn = null;
+    let myName = '';
+
+    const statusEl = document.getElementById('status');
+    const chatEl = document.getElementById('chat');
+    const hostIdEl = document.getElementById('hostId');
+    const hostIdContainer = document.getElementById('hostIdContainer');
+    const copyBtn = document.getElementById('copyBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+
+    function log(msg, isSystem = false, from = null) {
+      const p = document.createElement('p');
+      if (isSystem) {
+        p.textContent = msg;
+        p.className = 'system';
+      } else {
+        p.className = 'message ' + (from === myName ? 'me' : 'them');
+
+        // URLs im msg finden und als Links ersetzen
+        const urlRegex = /(\bhttps?:\/\/[^\s]+)/g;
+        const parts = msg.split(urlRegex);
+
+        parts.forEach(part => {
+          if (urlRegex.test(part)) {
+            const a = document.createElement('a');
+            a.href = part;
+            a.textContent = part;
+            a.target = '_blank';
+            a.style.color = '#34b7f1'; // blau, wie WhatsApp-Linkfarbe
+            a.style.textDecoration = 'underline';
+            p.appendChild(a);
+          } else {
+            p.appendChild(document.createTextNode(part));
+          }
+        });
+      }
+      chatEl.appendChild(p);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    document.getElementById('startBtn').onclick = () => {
+      myName = document.getElementById('nameInput').value.trim();
+      const customId = document.getElementById('customIdInput').value.trim();
+      if (!myName || !customId) return alert('Name + eigene ID erforderlich');
+
+      peer = new Peer(customId);
+
+      peer.on('open', id => {
+        statusEl.textContent = 'Host gestartet. ID: ' + id;
+        hostIdEl.textContent = id;
+        hostIdContainer.style.display = 'flex';
+        log('Host gestartet. Warte auf Verbindung...', true);
+      });
+
+      peer.on('connection', c => {
+        if (conn) {
+          c.on('open', () => c.close());
+          return;
+        }
+        conn = c;
+        setupConnection();
+      });
+
+      peer.on('error', err => alert('PeerJS Fehler: ' + err));
+    };
+
+    copyBtn.onclick = () => {
+      if (!hostIdEl.textContent) return;
+      navigator.clipboard.writeText(hostIdEl.textContent).then(() => {
+        copyBtn.textContent = 'Kopiert!';
+        setTimeout(() => (copyBtn.textContent = 'Kopieren'), 1500);
+      });
+    };
+
+    hostIdEl.onclick = copyBtn.onclick;
+
+    document.getElementById('connectBtn').onclick = () => {
+      myName = document.getElementById('nameInput').value.trim();
+      const hostId = document.getElementById('hostIdInput').value.trim();
+      if (!myName || !hostId) return alert('Name und Host-ID erforderlich');
+      peer = new Peer();
+      peer.on('open', id => {
+        statusEl.textContent = 'Verbinde mit ' + hostId + ' ...';
+        conn = peer.connect(hostId);
+        conn.on('open', () => {
+          setupConnection();
+          conn.send({ type: 'intro', name: myName });
+        });
+      });
+      peer.on('error', err => alert('PeerJS Fehler: ' + err));
+    };
+
+    function setupConnection() {
+      log('Verbindung hergestellt.', true);
+      statusEl.textContent = 'Status: Verbunden mit ' + conn.peer;
+
+      conn.on('data', data => {
+        if (data.type === 'intro') {
+          log(data.name + ' ist dem Chat beigetreten.', true);
+        } else if (data.type === 'chat') {
+          log(data.name + ': ' + data.message, false, data.name);
+        } else if (data.type === 'file') {
+          receiveFile(data);
+        }
+      });
+
+      conn.on('close', () => {
+        alert('Verbindung zum Server getrennt.');
+        statusEl.textContent = 'Status: Nicht verbunden';
+        conn = null;
+        location.reload();
+      });
+    }
+
+    document.getElementById('sendBtn').onclick = () => sendMessage();
+    document.getElementById('messageInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    function sendMessage() {
+      if (!conn || conn.open === false) return alert('Keine Verbindung');
+      const message = document.getElementById('messageInput').value.trim();
+      if (!message) return;
+      log(myName + ': ' + message, false, myName);
+      conn.send({ type: 'chat', name: myName, message });
+      document.getElementById('messageInput').value = '';
+    }
+
+    document.getElementById('fileInput').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!conn || conn.open === false) return alert('Keine Verbindung');
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        conn.send({
+          type: 'file',
+          name: file.name,
+          fileData: reader.result
+        });
+        log('Datei gesendet: ' + file.name, true);
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
+
+    function receiveFile(data) {
+      const a = document.createElement('a');
+      a.href = data.fileData;
+      a.download = data.name;
+      a.textContent = 'Datei empfangen: ' + data.name;
+      a.style.color = '#34b7f1';
+      a.style.display = 'block';
+      a.style.textDecoration = 'underline';
+      chatEl.appendChild(a);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    disconnectBtn.onclick = () => {
+      if (conn) {
+        conn.close();
+        conn = null;
+      }
+      alert('Verbindung zum Server getrennt.');
+      location.reload();
+    };
+  </script>
+</body>
+</html>
